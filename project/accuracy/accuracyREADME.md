@@ -17,7 +17,7 @@ python -m pip install -r project/accuracy/requirements.txt
 Run the unit tests:
 
 ```bash
-python -m unittest project.accuracy.test_shiftmac -v
+python -m unittest project.accuracy.shiftmac_tests -v
 ```
 
 Show available accuracy options:
