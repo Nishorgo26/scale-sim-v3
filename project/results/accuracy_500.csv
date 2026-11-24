@@ -1,0 +1,4 @@
+workload,pe,bits,weights_id,dataset,subset_seed,num_images,num_correct,top1_pct
+resnet18,baseline,4,ResNet18_Weights.IMAGENET1K_V1,D:\Datasets\imagenette2-160\val,0,500,343,68.6
+resnet18,pot,4,ResNet18_Weights.IMAGENET1K_V1,D:\Datasets\imagenette2-160\val,0,500,140,28.0
+resnet18,apot,4,ResNet18_Weights.IMAGENET1K_V1,D:\Datasets\imagenette2-160\val,0,500,346,69.2
