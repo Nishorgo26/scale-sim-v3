@@ -26,13 +26,25 @@ def mitchell_matrix(a, w, out_chunk=8, pos_chunk=16, k_chunk=64):
     k, positions = a.shape
     outputs = w.shape[0]
     result = a.new_zeros((outputs, positions))
+    tiles_by_shape = {}
     for o in range(0, outputs, out_chunk):
         for p in range(0, positions, pos_chunk):
-            part = result[o:o + out_chunk, p:p + pos_chunk]
+            tile_shape = (min(out_chunk, outputs - o), min(pos_chunk, positions - p))
+            tiles_by_shape.setdefault(tile_shape, []).append((o, p))
+
+    tile_batch = 8
+    for (tile_outputs, tile_positions), tiles in tiles_by_shape.items():
+        for start in range(0, len(tiles), tile_batch):
+            batch = tiles[start:start + tile_batch]
             for kk in range(0, k, k_chunk):
-                aa = a[kk:kk + k_chunk, p:p + pos_chunk]
-                ww = w[o:o + out_chunk, kk:kk + k_chunk]
-                part += mitchell_torch(ww[:, :, None], aa[None, :, :]).sum(dim=1)
+                aa = torch.stack([a[kk:kk + k_chunk, p:p + tile_positions]
+                                  for _, p in batch])
+                ww = torch.stack([w[o:o + tile_outputs, kk:kk + k_chunk]
+                                  for o, _ in batch])
+                products = mitchell_torch(ww[:, :, :, None],
+                                          aa[:, None, :, :]).sum(dim=2)
+                for index, (o, p) in enumerate(batch):
+                    result[o:o + tile_outputs, p:p + tile_positions] += products[index]
     return result
 
 
@@ -85,7 +97,7 @@ class MitchellConv2d(nn.Module):
                 aa = patches[g * per_group:(g + 1) * per_group]
                 ww = self.weight[g * out_per_group:(g + 1) * out_per_group].reshape(out_per_group, -1)
                 parts.append(mitchell_matrix(aa, ww))
-            out = torch.cat(parts, dim=0)
+            out = parts[0] if self.groups == 1 else torch.cat(parts, dim=0)
             if self.bias is not None:
                 out += self.bias[:, None]
             result.append(out.reshape(self.out_channels, oh, ow))
